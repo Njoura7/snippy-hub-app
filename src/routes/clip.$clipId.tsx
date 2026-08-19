@@ -158,13 +158,15 @@ function ClipEditor() {
                   {formatDuration(range[0] ?? 0)} — {formatDuration(range[1] ?? 0)}
                 </span>
               </div>
-              <Slider
-                min={Math.max(0, clip.start - 60)}
-                max={clip.end + 60}
-                step={1}
-                value={range}
-                onValueChange={setRange}
-              />
+              <div className="py-2">
+                <Slider
+                  min={Math.max(0, clip.start - 60)}
+                  max={clip.end + 60}
+                  step={1}
+                  value={range}
+                  onValueChange={setRange}
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
                 Drag either handle to adjust the start and end of the clip.
               </p>
