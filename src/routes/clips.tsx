@@ -53,7 +53,7 @@ function Clips() {
           </div>
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-48">
-              <SelectValue />
+              <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="score">Highest score</SelectItem>
