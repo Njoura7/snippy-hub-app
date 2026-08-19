@@ -44,14 +44,14 @@ function ClipEditor() {
     0,
     mockClips.findIndex((c) => c.id === clipId),
   );
-  const clip = mockClips[index];
+  const clip = mockClips[index]!;
 
   const [hook, setHook] = useState(clip.hook);
   const [font, setFont] = useState("sans");
   const [color, setColor] = useState("white");
   const [position, setPosition] = useState("bottom");
   const [size, setSize] = useState([28]);
-  const [range, setRange] = useState([clip.start, clip.end]);
+  const [range, setRange] = useState<number[]>([clip.start, clip.end]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,7 +77,7 @@ function ClipEditor() {
             <ClipThumb index={index} label={hook} />
             <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
               <span>Preview only — playback coming soon</span>
-              <span>{formatDuration(range[1] - range[0])}</span>
+              <span>{formatDuration((range[1] ?? 0) - (range[0] ?? 0))}</span>
             </div>
           </div>
 
@@ -155,7 +155,7 @@ function ClipEditor() {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium">Trim</h2>
                 <span className="text-xs tabular-nums text-muted-foreground">
-                  {formatDuration(range[0])} — {formatDuration(range[1])}
+                  {formatDuration(range[0] ?? 0)} — {formatDuration(range[1] ?? 0)}
                 </span>
               </div>
               <Slider

@@ -38,6 +38,7 @@ function Processing() {
       const t = setTimeout(() => navigate({ to: "/clips" }), 900);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [step, navigate]);
 
   const pct = Math.round((step / PROCESSING_STEPS.length) * 100);
