@@ -91,7 +91,7 @@ function ClipCard({
 }) {
   return (
     <Card className="gap-0 overflow-hidden p-3 shadow-none">
-      <ClipThumb index={index} label={clip.hook} />
+      <ClipThumb index={index} label={clip.hook} className="mx-auto max-h-[320px]" />
       <div className="mt-3 space-y-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{formatDuration(clip.duration)}</span>
