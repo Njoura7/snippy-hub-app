@@ -11,7 +11,15 @@ import {
 } from "@/components/ui/select";
 import { TopNav } from "@/components/TopNav";
 import { ClipThumb } from "@/components/ClipThumb";
-import { mockClips, formatDuration, type Clip } from "@/lib/mock-data";
+import {
+  mockClips,
+  formatDuration,
+  PLATFORMS,
+  PLATFORM_VARIANTS,
+  type Clip,
+  type Platform,
+} from "@/lib/mock-data";
+import { useSelectedPlatforms } from "@/lib/platform-store";
 
 const title = "Generated clips — Cutroom";
 const description = "Review auto-generated vertical clips with hooks, captions, and scores.";
@@ -30,6 +38,7 @@ export const Route = createFileRoute("/clips")({
 
 function Clips() {
   const [sort, setSort] = useState("score");
+  const platforms = useSelectedPlatforms();
   const [clips, setClips] = useState<Clip[]>(mockClips);
 
   const sorted = useMemo(() => {
@@ -48,7 +57,10 @@ function Clips() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Founder podcast — ep. 112</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {clips.length} clips · 9:16 · TikTok
+              {clips.length} clips · 9:16 ·{" "}
+              {platforms
+                .map((p) => PLATFORMS.find((x) => x.value === p)?.label)
+                .join(" · ")}
             </p>
           </div>
           <Select value={sort} onValueChange={setSort}>
@@ -69,6 +81,7 @@ function Clips() {
               key={clip.id}
               clip={clip}
               index={i}
+              platforms={platforms}
               onHookChange={(hook) =>
                 setClips((prev) => prev.map((c) => (c.id === clip.id ? { ...c, hook } : c)))
               }
@@ -83,20 +96,51 @@ function Clips() {
 function ClipCard({
   clip,
   index,
+  platforms,
   onHookChange,
 }: {
   clip: Clip;
   index: number;
+  platforms: Platform[];
   onHookChange: (hook: string) => void;
 }) {
+  const [variant, setVariant] = useState<Platform>(platforms[0] ?? "tiktok");
+  const active = platforms.includes(variant) ? variant : (platforms[0] ?? "tiktok");
+  const config = PLATFORM_VARIANTS[active];
+
   return (
     <Card className="gap-0 overflow-hidden p-3 shadow-none">
-      <ClipThumb index={index} label={clip.hook} className="mx-auto max-h-[320px]" />
+      {platforms.length > 1 ? (
+        <div className="mb-3 flex gap-1 rounded-md bg-secondary p-1">
+          {platforms.map((p) => (
+            <button
+              key={p}
+              onClick={() => setVariant(p)}
+              className={`flex-1 rounded px-2 py-1 text-[11px] font-medium transition-colors ${
+                p === active
+                  ? "bg-card text-foreground border border-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {PLATFORMS.find((x) => x.value === p)?.label.replace("YouTube ", "").replace("Instagram ", "")}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <ClipThumb
+        index={index}
+        label={clip.hook}
+        className="mx-auto max-h-[320px]"
+        platform={active}
+        showSafeZones
+        position={config.position}
+      />
       <div className="mt-3 space-y-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{formatDuration(clip.duration)}</span>
           <span>{clip.tone}</span>
         </div>
+        <p className="text-[11px] text-muted-foreground">{config.note}</p>
 
         <div>
           <div className="flex items-center justify-between text-xs">

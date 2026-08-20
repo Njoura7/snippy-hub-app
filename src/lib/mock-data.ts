@@ -98,3 +98,32 @@ export function formatDuration(seconds: number) {
   const s = Math.round(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+export type CaptionPreset = "bold" | "minimal" | "karaoke";
+
+export const CAPTION_PRESETS: { value: CaptionPreset; label: string; hint: string }[] = [
+  { value: "bold", label: "Bold pop", hint: "Heavy uppercase, punchy" },
+  { value: "minimal", label: "Minimal", hint: "Light, unobtrusive" },
+  { value: "karaoke", label: "Karaoke", hint: "Word-by-word highlight" },
+];
+
+export const SAFE_ZONES: Record<
+  Platform,
+  { label: string; iconColumnBottom: number; iconColumnHeight: number; captionBar: number }
+> = {
+  tiktok: { label: "TikTok safe zone", iconColumnBottom: 18, iconColumnHeight: 34, captionBar: 14 },
+  shorts: { label: "Shorts safe zone", iconColumnBottom: 12, iconColumnHeight: 26, captionBar: 10 },
+  reels: { label: "Reels safe zone", iconColumnBottom: 16, iconColumnHeight: 30, captionBar: 18 },
+};
+
+export const PLATFORM_VARIANTS: Record<Platform, { position: "top" | "middle" | "bottom"; note: string }> = {
+  tiktok: { position: "bottom", note: "Captions raised above the icon column" },
+  shorts: { position: "middle", note: "Center captions, tighter title bar" },
+  reels: { position: "top", note: "Captions lifted clear of the caption bar" },
+};
+
+export const mockWaveform = Array.from({ length: 96 }, (_, i) =>
+  Math.round(24 + 62 * Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.19) + Math.sin(i * 0.31) * 0.4)),
+);
+
+export const mockTranscript =
+  "…and that's when I realised nobody tells you this about waking up at 4am — the first week is a lie, the second week is where it actually starts to compound…";
