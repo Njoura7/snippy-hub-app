@@ -148,7 +148,7 @@ function ClipEditor() {
               preset={preset}
               color={color}
               position={position}
-              size={size[0]}
+              size={size[0] ?? 28}
               emphasized={emphasized}
             />
 
