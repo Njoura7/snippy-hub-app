@@ -71,7 +71,7 @@ export function ClipThumb({
         {label ? (
           <p
             className={`line-clamp-3 rounded px-2 py-1 leading-snug ${PRESET_CLASS[preset]} ${
-              COLOR_STYLE[color] ?? COLOR_STYLE.white
+              COLOR_STYLE[color] ?? COLOR_STYLE['white']
             }`}
             style={size ? { fontSize: `${Math.round(size * 0.42)}px` } : undefined}
           >
