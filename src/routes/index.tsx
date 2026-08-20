@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TopNav } from "@/components/TopNav";
 import { PLATFORMS, mockProjects, type Platform } from "@/lib/mock-data";
+import { useSelectedPlatforms, setSelectedPlatforms } from "@/lib/platform-store";
 
 const title = "Cutroom — turn long videos into short clips";
 const description =
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
-  const [platform, setPlatform] = useState<Platform>("tiktok");
+  const platforms = useSelectedPlatforms();
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<string | null>(null);
   const [showProjects, setShowProjects] = useState(true);
