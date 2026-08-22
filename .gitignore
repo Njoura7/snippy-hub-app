@@ -20,6 +20,23 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Env files — never commit real secrets
+.env
+.env.*
+!.env.example
+!*/.env.example
+
+# Backend build output
+backend/apps/*/dist
+backend/packages/*/dist
+
+# Local dev "storage" (STORAGE_DRIVER=local) — downloaded/rendered video files
+backend/.data/
+
+# Optional yt-dlp cookies.txt (real YouTube session — never commit this)
+backend/secrets/*
+!backend/secrets/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

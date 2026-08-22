@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -20,11 +20,16 @@ import {
   type Platform,
 } from "@/lib/mock-data";
 import { useSelectedPlatforms } from "@/lib/platform-store";
+import { getProject, listProjectClips, type ApiClip, type ApiProject } from "@/lib/api";
 
 const title = "Generated clips — Cutroom";
 const description = "Review auto-generated vertical clips with hooks, captions, and scores.";
 
 export const Route = createFileRoute("/clips")({
+  validateSearch: (search: Record<string, unknown>): { projectId?: string } => {
+    const projectId = typeof search["projectId"] === "string" ? (search["projectId"] as string) : undefined;
+    return projectId ? { projectId } : {};
+  },
   head: () => ({
     meta: [
       { title },
@@ -36,10 +41,48 @@ export const Route = createFileRoute("/clips")({
   component: Clips,
 });
 
+function toDisplayClip(c: ApiClip): Clip {
+  return {
+    id: c.id,
+    title: c.hookText,
+    hook: c.hookText,
+    duration: Math.round((c.endMs - c.startMs) / 1000),
+    score: Math.round(c.score),
+    start: Math.round(c.startMs / 1000),
+    end: Math.round(c.endMs / 1000),
+    tone: c.tag,
+  };
+}
+
 function Clips() {
+  const { projectId } = Route.useSearch();
   const [sort, setSort] = useState("score");
   const platforms = useSelectedPlatforms();
   const [clips, setClips] = useState<Clip[]>(mockClips);
+  // Real clips only exist once Step 3 (analyze) ships — until then this is
+  // always true for any real project, and we fall back to example clips
+  // rather than showing an empty gallery.
+  const [isExampleData, setIsExampleData] = useState(true);
+  const [project, setProject] = useState<ApiProject | null>(null);
+
+  useEffect(() => {
+    if (!projectId) return;
+    getProject(projectId)
+      .then(setProject)
+      .catch(() => {
+        // Backend unreachable — header falls back to the example title below.
+      });
+    listProjectClips(projectId)
+      .then((real) => {
+        if (real.length > 0) {
+          setClips(real.map(toDisplayClip));
+          setIsExampleData(false);
+        }
+      })
+      .catch(() => {
+        // Backend unreachable — stay on example clips.
+      });
+  }, [projectId]);
 
   const sorted = useMemo(() => {
     const c = [...clips];
@@ -53,9 +96,17 @@ function Clips() {
     <div className="min-h-screen bg-background">
       <TopNav />
       <main className="mx-auto max-w-6xl px-6 py-12">
+        {isExampleData && projectId ? (
+          <p className="mb-6 rounded-md border border-dashed border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
+            Showing example clips — clip generation (transcribe/analyze/cut) isn't built yet, so this
+            project has no real clips.
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Founder podcast — ep. 112</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {project?.title ?? project?.sourceUrl ?? project?.originalFilename ?? "Founder podcast — ep. 112"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {clips.length} clips · 9:16 ·{" "}
               {platforms
@@ -173,8 +224,10 @@ function ClipCard({
               Captions
             </Link>
           </Button>
-          <Button variant="ghost" size="sm">
-            Download
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/clip/$clipId" params={{ clipId: clip.id }}>
+              Download
+            </Link>
           </Button>
         </div>
       </div>

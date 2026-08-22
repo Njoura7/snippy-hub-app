@@ -1,0 +1,22 @@
+{
+  "name": "cutroom-backend",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @cutroom/api",
+    "dev:worker": "npm run dev -w @cutroom/worker",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run generate -w @cutroom/db",
+    "db:migrate": "npm run migrate -w @cutroom/db"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.16.5"
+  }
+}

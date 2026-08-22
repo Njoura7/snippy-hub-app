@@ -1,0 +1,22 @@
+[
+  { "emoji": "🔥", "filename": "1f525.png", "label": "Fire" },
+  { "emoji": "💡", "filename": "1f4a1.png", "label": "Idea" },
+  { "emoji": "🎯", "filename": "1f3af.png", "label": "Target" },
+  { "emoji": "📖", "filename": "1f4d6.png", "label": "Story" },
+  { "emoji": "😱", "filename": "1f631.png", "label": "Shock" },
+  { "emoji": "💰", "filename": "1f4b0.png", "label": "Money" },
+  { "emoji": "🚀", "filename": "1f680.png", "label": "Growth" },
+  { "emoji": "⚡", "filename": "26a1.png", "label": "Fast" },
+  { "emoji": "💥", "filename": "1f4a5.png", "label": "Impact" },
+  { "emoji": "🤯", "filename": "1f92f.png", "label": "Mind-blown" },
+  { "emoji": "👀", "filename": "1f440.png", "label": "Watch" },
+  { "emoji": "✅", "filename": "2705.png", "label": "Confirmed" },
+  { "emoji": "🧠", "filename": "1f9e0.png", "label": "Smart" },
+  { "emoji": "💪", "filename": "1f4aa.png", "label": "Strong" },
+  { "emoji": "🎉", "filename": "1f389.png", "label": "Celebrate" },
+  { "emoji": "🤔", "filename": "1f914.png", "label": "Thinking" },
+  { "emoji": "🤖", "filename": "1f916.png", "label": "AI/Tech" },
+  { "emoji": "📈", "filename": "1f4c8.png", "label": "Trending" },
+  { "emoji": "🏆", "filename": "1f3c6.png", "label": "Win" },
+  { "emoji": "😂", "filename": "1f602.png", "label": "Funny" }
+]

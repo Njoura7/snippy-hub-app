@@ -1,0 +1,9 @@
+[
+  {
+    "key": "placeholder-ambient",
+    "title": "Ambient Pad (placeholder)",
+    "mood": "calm",
+    "filename": "placeholder-ambient.mp3",
+    "license": "Synthesized locally via ffmpeg sine generators — not a real recording, no rights involved. Swap in your own licensed tracks (Epidemic Sound, Artlist, YouTube Audio Library, etc.) by adding an mp3 here and an entry in this manifest."
+  }
+]

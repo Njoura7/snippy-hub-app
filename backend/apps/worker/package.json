@@ -1,0 +1,23 @@
+{
+  "name": "@cutroom/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cutroom/db": "*",
+    "@cutroom/pipeline": "*",
+    "@cutroom/shared": "*",
+    "@cutroom/storage": "*",
+    "drizzle-orm": "^0.44.6",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^22.16.5"
+  }
+}

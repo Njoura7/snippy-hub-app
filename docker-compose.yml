@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cutroom
+      POSTGRES_PASSWORD: cutroom
+      POSTGRES_DB: cutroom
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cutroom"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Postgres dashboard — zero config, browse tables/rows at localhost:8081.
+  # Host port 8081 (not adminer's own 8080) so the frontend can have 8080 —
+  # @lovable.dev/vite-tanstack-config hard-forces the dev server onto 8080.
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Overrides backend/.env inside the container: containers reach Postgres
+      # by service name, not localhost, and share the video_storage volume at
+      # a fixed path (backend/.env's LOCAL_STORAGE_PATH is for native/host dev).
+      DATABASE_URL: postgres://cutroom:cutroom@postgres:5432/cutroom
+      LOCAL_STORAGE_PATH: /data/storage
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - video_storage:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgres://cutroom:cutroom@postgres:5432/cutroom
+      LOCAL_STORAGE_PATH: /data/storage
+    volumes:
+      - video_storage:/data/storage
+      # Optional: drop a cookies.txt in backend/secrets/ and set
+      # YTDLP_COOKIES_FILE=/app/secrets/cookies.txt in backend/.env to unlock
+      # real HD downloads instead of the ~360p android fallback — see README.
+      - ./backend/secrets:/app/secrets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Local-dev parity for the frontend — bind-mounted for hot reload. Not
+  # necessarily how the frontend ends up hosted in production.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  pgdata:
+  video_storage:
+  frontend_node_modules:
