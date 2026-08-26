@@ -5,6 +5,11 @@ import type { FastifyInstance } from "fastify";
 
 const CLIP_STATUSES = ["candidate", "approved", "rejected", "rendering", "rendered", "failed"] as const;
 const CAPTION_PRESETS = ["bold", "minimal", "karaoke"] as const;
+// How far startMs/endMs can move from analyzedStartMs/analyzedEndMs — lets
+// a clip that got cut off mid-word/mid-sentence be nudged without letting
+// it drift into content the analyzer never actually scored.
+const TRIM_ADJUST_MS = 20_000;
+const MIN_CLIP_MS = 3_000;
 
 interface UpdateClipBody {
   status?: (typeof CLIP_STATUSES)[number];
@@ -13,17 +18,16 @@ interface UpdateClipBody {
   captionPreset?: (typeof CAPTION_PRESETS)[number];
   captionStyleOverrides?: Record<string, unknown>;
   backgroundMusicKey?: string | null;
+  musicVolume?: number | null;
+  voiceVolume?: number | null;
+  startMs?: number;
+  endMs?: number;
 }
 
 interface ExportClipBody {
   platform: Platform;
 }
 
-/**
- * Real clip rows for a project — always [] today, since nothing creates
- * clips until Step 3 (analyze) exists. The frontend falls back to mock
- * clips when this comes back empty rather than pretending analysis ran.
- */
 export async function clipsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/projects/:id/clips", async (request) => {
     const rows = await app.db.query.clips.findMany({
@@ -61,6 +65,10 @@ export async function clipsRoutes(app: FastifyInstance) {
             captionPreset: { type: "string", enum: CAPTION_PRESETS },
             captionStyleOverrides: { type: "object" },
             backgroundMusicKey: { type: ["string", "null"] },
+            musicVolume: { type: ["number", "null"], minimum: 0, maximum: 0.5 },
+            voiceVolume: { type: ["number", "null"], minimum: 0.5, maximum: 1.5 },
+            startMs: { type: "integer", minimum: 0 },
+            endMs: { type: "integer", minimum: 0 },
           },
           additionalProperties: false,
         },
@@ -77,6 +85,28 @@ export async function clipsRoutes(app: FastifyInstance) {
       if (request.body.captionPreset !== undefined) patch.captionPreset = request.body.captionPreset;
       if (request.body.captionStyleOverrides !== undefined) patch.captionStyleOverrides = request.body.captionStyleOverrides;
       if (request.body.backgroundMusicKey !== undefined) patch.backgroundMusicKey = request.body.backgroundMusicKey;
+      if (request.body.musicVolume !== undefined) patch.musicVolume = request.body.musicVolume;
+      if (request.body.voiceVolume !== undefined) patch.voiceVolume = request.body.voiceVolume;
+
+      if (request.body.startMs !== undefined || request.body.endMs !== undefined) {
+        const newStart = request.body.startMs ?? existing.startMs;
+        const newEnd = request.body.endMs ?? existing.endMs;
+        const anchorStart = existing.analyzedStartMs ?? existing.startMs;
+        const anchorEnd = existing.analyzedEndMs ?? existing.endMs;
+
+        if (newEnd - newStart < MIN_CLIP_MS) {
+          return reply.code(400).send({ error: `Clip must be at least ${MIN_CLIP_MS / 1000}s long` });
+        }
+        if (newStart < anchorStart - TRIM_ADJUST_MS || newStart > anchorEnd + TRIM_ADJUST_MS) {
+          return reply.code(400).send({ error: `startMs must stay within ${TRIM_ADJUST_MS / 1000}s of the analyzed clip` });
+        }
+        if (newEnd < anchorStart - TRIM_ADJUST_MS || newEnd > anchorEnd + TRIM_ADJUST_MS) {
+          return reply.code(400).send({ error: `endMs must stay within ${TRIM_ADJUST_MS / 1000}s of the analyzed clip` });
+        }
+
+        patch.startMs = newStart;
+        patch.endMs = newEnd;
+      }
 
       const [updated] = await app.db.update(clips).set(patch).where(eq(clips.id, existing.id)).returning();
       return { clip: updated };

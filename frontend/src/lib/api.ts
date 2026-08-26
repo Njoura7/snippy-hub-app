@@ -22,6 +22,8 @@ export interface ApiProject {
   title: string | null;
   durationSeconds: number | null;
   targetPlatforms: Platform[];
+  maxClips: number;
+  topicFilter: string | null;
   status: ProjectStatus;
   errorMessage: string | null;
   createdAt: string;
@@ -33,6 +35,8 @@ export interface ApiClip {
   projectId: string;
   startMs: number;
   endMs: number;
+  analyzedStartMs: number | null;
+  analyzedEndMs: number | null;
   score: number;
   hookText: string;
   tag: string;
@@ -48,6 +52,8 @@ export interface ApiClip {
     headerEnabled?: boolean;
   } | null;
   backgroundMusicKey: string | null;
+  musicVolume: number | null;
+  voiceVolume: number | null;
   updatedAt: string;
 }
 
@@ -55,6 +61,7 @@ export interface MusicTrack {
   key: string;
   title: string;
   mood: string;
+  artist: string | null;
   license: string;
   previewUrl: string;
 }
@@ -110,6 +117,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
 
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -117,6 +125,8 @@ export function createProjectFromUrl(input: {
   sourceUrl: string;
   sourceType: "youtube" | "twitch";
   targetPlatforms: Platform[];
+  maxClips?: number | undefined;
+  topicFilter?: string | null;
 }) {
   return request<{ project: ApiProject }>("/projects", {
     method: "POST",
@@ -125,11 +135,18 @@ export function createProjectFromUrl(input: {
   }).then((r) => r.project);
 }
 
-export function createProjectFromUpload(input: { file: File; targetPlatforms: Platform[] }) {
+export function createProjectFromUpload(input: {
+  file: File;
+  targetPlatforms: Platform[];
+  maxClips?: number | undefined;
+  topicFilter?: string | null;
+}) {
   const form = new FormData();
   // targetPlatforms must precede file — the API only has fields sent before
   // the file part available at the time it reads the upload stream.
   form.append("targetPlatforms", JSON.stringify(input.targetPlatforms));
+  if (input.maxClips) form.append("maxClips", String(input.maxClips));
+  if (input.topicFilter) form.append("topicFilter", input.topicFilter);
   form.append("file", input.file);
 
   return request<{ project: ApiProject }>("/projects/upload", {
@@ -140,6 +157,11 @@ export function createProjectFromUpload(input: { file: File; targetPlatforms: Pl
 
 export function listProjects() {
   return request<{ projects: ApiProject[] }>("/projects").then((r) => r.projects);
+}
+
+/** Irreversible — removes the project, its transcript/clips/renders, and every file it owns in storage. */
+export function deleteProject(id: string) {
+  return request<void>(`/projects/${id}`, { method: "DELETE" });
 }
 
 export function getProject(id: string) {
@@ -163,6 +185,10 @@ export function updateClip(
     captionPreset: string;
     captionStyleOverrides: Record<string, unknown>;
     backgroundMusicKey: string | null;
+    musicVolume: number | null;
+    voiceVolume: number | null;
+    startMs: number;
+    endMs: number;
   }>,
 ) {
   return request<{ clip: ApiClip }>(`/clips/${id}`, {

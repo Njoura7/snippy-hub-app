@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { copyFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { runCommand } from "./processRunner.js";
 
@@ -23,12 +23,21 @@ export async function downloadWithYtDlp(sourceUrl: string, workDir: string, opti
 
   if (options.cookiesFilePath) {
     try {
+      // yt-dlp always writes refreshed cookies back to the --cookies path
+      // when it's done — but the mounted secrets dir is read-only (by
+      // design, so a bad container can't corrupt the user's real cookies
+      // file). Copy into workDir (writable, per-job temp) first so yt-dlp
+      // has somewhere to write; the copy is thrown away with the rest of
+      // workDir at the end of this function.
+      const cookiesCopyPath = path.join(workDir, "cookies.txt");
+      await copyFile(options.cookiesFilePath, cookiesCopyPath);
+
       await runCommand("yt-dlp", [
         "--no-playlist",
         "--write-info-json",
         "--no-progress",
         "--cookies",
-        options.cookiesFilePath,
+        cookiesCopyPath,
         // A real session's cookies satisfy YouTube's PO-token check, so the
         // full adaptive format ladder (up to 1080p here) is actually reachable.
         "-f",

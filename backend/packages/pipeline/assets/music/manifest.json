@@ -3,7 +3,128 @@
     "key": "placeholder-ambient",
     "title": "Ambient Pad (placeholder)",
     "mood": "calm",
+    "artist": null,
     "filename": "placeholder-ambient.mp3",
-    "license": "Synthesized locally via ffmpeg sine generators — not a real recording, no rights involved. Swap in your own licensed tracks (Epidemic Sound, Artlist, YouTube Audio Library, etc.) by adding an mp3 here and an entry in this manifest."
+    "license": "Synthesized locally via ffmpeg sine generators — not a real recording, no rights involved."
+  },
+  {
+    "key": "august",
+    "title": "August",
+    "mood": "calm, emotional",
+    "artist": null,
+    "filename": "august.mp3",
+    "license": "License details are not recorded for this asset; verify the source terms before using it in monetized or commercial content."
+  },
+  {
+    "key": "lo-fi-beats",
+    "title": "Lo-fi Beats",
+    "mood": "calm, relaxed",
+    "artist": null,
+    "filename": "lo-fi-beats.mp3",
+    "license": "License details are not recorded for this asset; verify the source terms before using it in monetized or commercial content."
+  },
+  {
+    "key": "friendships",
+    "title": "Friendships",
+    "mood": "emotional, uplifting",
+    "artist": "Pascal Letoublon",
+    "filename": "pascal-letoublon-friendships.mp3",
+    "license": "License details are not recorded for this asset; verify the source terms before using it in monetized or commercial content."
+  },
+  {
+    "key": "beauty",
+    "title": "Beauty",
+    "mood": "calm, uplifting",
+    "artist": null,
+    "filename": "Beauty(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "beloved",
+    "title": "Beloved",
+    "mood": "warm, emotional",
+    "artist": null,
+    "filename": "Beloved(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "feel-good",
+    "title": "Feel Good",
+    "mood": "upbeat, happy",
+    "artist": null,
+    "filename": "Feel-Good(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "film",
+    "title": "Film",
+    "mood": "cinematic",
+    "artist": null,
+    "filename": "Film(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "heroic",
+    "title": "Heroic",
+    "mood": "epic, motivational",
+    "artist": null,
+    "filename": "HEROICCC(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "inspiring-dreams",
+    "title": "Inspiring Dreams",
+    "mood": "inspiring",
+    "artist": null,
+    "filename": "Inspiring-Dreams(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "the-success",
+    "title": "The Success",
+    "mood": "triumphant, motivational",
+    "artist": "Keys of Moon",
+    "filename": "keys-of-moon-the-success(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "heroism",
+    "title": "Heroism",
+    "mood": "epic",
+    "artist": "MaxKoMusic",
+    "filename": "maxkomusic-heroism(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "monkeys-spinning-monkeys",
+    "title": "Monkeys Spinning Monkeys",
+    "mood": "quirky, comedic",
+    "artist": "Kevin MacLeod",
+    "filename": "Monkeys-Spinning-Monkeys(chosic.com).mp3",
+    "license": "Widely-known Kevin MacLeod (incompetech.com) track, normally released under CC BY 4.0 (free for commercial use with attribution). Confirm the license shown on this track's chosic.com page and credit Kevin MacLeod in your video description if required."
+  },
+  {
+    "key": "code-switch",
+    "title": "Code Switch",
+    "mood": "energetic, electronic",
+    "artist": "Punch Deck",
+    "filename": "Punch-Deck-Code-Switch-chosic.com_.mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
+  },
+  {
+    "key": "moonlight",
+    "title": "Moonlight",
+    "mood": "emotional, cinematic",
+    "artist": "Scott Buckley",
+    "filename": "scott-buckley-moonlight(chosic.com).mp3",
+    "license": "Scott Buckley releases his catalog under CC BY 4.0 (free for commercial use with attribution) on his own site — confirm the license shown on this track's chosic.com page and credit Scott Buckley in your video description if required."
+  },
+  {
+    "key": "the-inspiration",
+    "title": "The Inspiration",
+    "mood": "uplifting, inspiring",
+    "artist": null,
+    "filename": "The-Inspiration-mp3(chosic.com).mp3",
+    "license": "Sourced from chosic.com's free-music library. Chosic tracks are typically Creative Commons (often CC BY, attribution required) or a chosic-specific free license — verify the exact terms on this track's chosic.com page before using it in monetized/commercial content, and credit the artist if required."
   }
 ]

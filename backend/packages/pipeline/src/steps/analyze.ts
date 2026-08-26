@@ -9,6 +9,13 @@ const OVERLAP_SECONDS = 30; // so a moment straddling a chunk boundary isn't mis
 const MIN_CLIP_SECONDS = 15;
 const MAX_CLIP_SECONDS = 120;
 const WORDS_PER_MARKER = 6; // how often a "[m:ss]" timestamp marker is inserted in the prompt
+export const DEFAULT_MAX_CLIPS = 10;
+// How far past the model's chosen end timestamp we'll look for a clean
+// sentence boundary (next word ending in . ! or ?) before giving up and
+// just using the word boundary — bounds how much a clip can grow beyond
+// what the model asked for.
+const SENTENCE_EXTENSION_LOOKAHEAD_SECONDS = 6;
+const SENTENCE_END_RE = /[.!?]["')\]]?$/;
 
 // Groq's free tier caps tokens-per-minute fairly tightly (e.g. 8000 TPM for
 // gpt-oss-120b) — a long episode's chunk loop can burn through that in 1-2
@@ -46,11 +53,12 @@ export interface ClipCandidate {
  */
 export async function analyzeTranscript(
   words: WordTimestamp[],
-  opts: { provider: AnalyzeProvider; apiKey: string },
+  opts: { provider: AnalyzeProvider; apiKey: string; maxClips?: number; topicFilter?: string | null },
 ): Promise<ClipCandidate[]> {
   if (words.length === 0) return [];
 
   const scoreChunk = opts.provider === "anthropic" ? scoreTranscriptChunkAnthropic : scoreTranscriptChunkGroq;
+  const maxClips = opts.maxClips && opts.maxClips > 0 ? opts.maxClips : DEFAULT_MAX_CLIPS;
 
   const totalDuration = words[words.length - 1]!.end;
   const candidates: ClipCandidate[] = [];
@@ -64,28 +72,37 @@ export async function analyzeTranscript(
     if (opts.provider === "groq" && !isFirstChunk) await sleep(GROQ_INTER_CHUNK_DELAY_MS);
     isFirstChunk = false;
 
-    const raw = await scoreChunkWithRateLimitRetry(scoreChunk, formatChunkForPrompt(chunkWords), opts.apiKey);
-    candidates.push(...raw.map(toClipCandidate).filter((c): c is ClipCandidate => c !== null));
+    const raw = await scoreChunkWithRateLimitRetry(scoreChunk, formatChunkForPrompt(chunkWords), opts.apiKey, opts.topicFilter);
+    candidates.push(
+      ...raw
+        .map(toClipCandidate)
+        .filter((c): c is ClipCandidate => c !== null)
+        .map((c) => snapToWordBoundaries(c, words))
+        // Defensive re-check — snapping can theoretically shrink a candidate
+        // that was only barely above MIN_CLIP_SECONDS before adjustment.
+        .filter((c) => c.endSeconds - c.startSeconds >= MIN_CLIP_SECONDS),
+    );
 
     if (chunkEnd >= totalDuration) break;
   }
 
-  return dedupeOverlapping(candidates);
+  return capToTopClips(dedupeOverlapping(candidates), maxClips);
 }
 
 /** Retries a single chunk on 429s with backoff; gives up on that one chunk
  * (rather than failing the whole analyze job) after exhausting backoff — a
  * gap in coverage beats losing every chunk already scored. */
 async function scoreChunkWithRateLimitRetry(
-  scoreChunk: (chunkText: string, apiKey: string) => Promise<RawCandidate[]>,
+  scoreChunk: (chunkText: string, apiKey: string, topicFilter?: string | null) => Promise<RawCandidate[]>,
   chunkText: string,
   apiKey: string,
+  topicFilter?: string | null,
 ): Promise<RawCandidate[]> {
   const attempts = [0, ...RATE_LIMIT_BACKOFF_MS];
   for (let i = 0; i < attempts.length; i++) {
     if (attempts[i]! > 0) await sleep(attempts[i]!);
     try {
-      return await scoreChunk(chunkText, apiKey);
+      return await scoreChunk(chunkText, apiKey, topicFilter);
     } catch (err) {
       if (!isRateLimitError(err)) throw err;
       const nextBackoff = attempts[i + 1];
@@ -152,6 +169,44 @@ function toClipCandidate(raw: RawCandidate): ClipCandidate | null {
     tag: raw.tag.slice(0, 40),
     emoji,
   };
+}
+
+/** The model only sees timestamp markers every WORDS_PER_MARKER words and
+ * picks endTimestamp to whole-second precision, so its chosen boundaries
+ * regularly land mid-word or mid-sentence. Snap start back to the start of
+ * its containing word (never mid-word), and try to extend end forward to
+ * the next sentence-ending punctuation within a bounded lookahead — falling
+ * back to just the containing word's end if nothing clean is nearby. */
+function snapToWordBoundaries(candidate: ClipCandidate, words: WordTimestamp[]): ClipCandidate {
+  if (words.length === 0) return candidate;
+
+  const startIdx = words.findIndex((w) => w.end > candidate.startSeconds);
+  const snappedStart = words[startIdx === -1 ? words.length - 1 : startIdx]!.start;
+
+  const endIdx = words.findIndex((w) => w.end >= candidate.endSeconds);
+  const wordSnappedEndIdx = endIdx === -1 ? words.length - 1 : endIdx;
+  const wordSnappedEnd = words[wordSnappedEndIdx]!.end;
+
+  let extendedEndIdx = wordSnappedEndIdx;
+  for (let i = wordSnappedEndIdx; i < words.length; i++) {
+    const w = words[i]!;
+    if (w.end - snappedStart > MAX_CLIP_SECONDS) break;
+    if (w.end - wordSnappedEnd > SENTENCE_EXTENSION_LOOKAHEAD_SECONDS) break;
+    extendedEndIdx = i;
+    if (SENTENCE_END_RE.test(w.word)) break;
+  }
+
+  return { ...candidate, startSeconds: snappedStart, endSeconds: words[extendedEndIdx]!.end };
+}
+
+/** Keeps only the top `maxClips` by score — the model's per-chunk 0-4 cap
+ * means a long episode with many chunks can still return 20+ candidates
+ * overall, most of which aren't actually the best moments in the video. */
+function capToTopClips(candidates: ClipCandidate[], maxClips: number): ClipCandidate[] {
+  return [...candidates]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxClips)
+    .sort((a, b) => a.startSeconds - b.startSeconds);
 }
 
 /** Chunk overlap can produce near-duplicate candidates for the same moment —

@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  buildScoringSystemPrompt,
   CANDIDATE_JSON_SCHEMA,
   CANDIDATE_TOOL_NAME,
   CANDIDATE_TOOL_DESCRIPTION,
-  SCORING_SYSTEM_PROMPT,
   type RawCandidate,
 } from "./scoringPrompt.js";
 
@@ -21,13 +21,17 @@ const CANDIDATE_TOOL: Anthropic.Tool = {
 };
 
 /** Paid — needs real credits on the Anthropic account (Console > Plans & Billing). */
-export async function scoreTranscriptChunkAnthropic(chunkText: string, apiKey: string): Promise<RawCandidate[]> {
+export async function scoreTranscriptChunkAnthropic(
+  chunkText: string,
+  apiKey: string,
+  topicFilter?: string | null,
+): Promise<RawCandidate[]> {
   const client = new Anthropic({ apiKey });
 
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 2048,
-    system: SCORING_SYSTEM_PROMPT,
+    system: buildScoringSystemPrompt(topicFilter),
     tools: [CANDIDATE_TOOL],
     tool_choice: { type: "tool", name: CANDIDATE_TOOL_NAME },
     messages: [{ role: "user", content: chunkText }],

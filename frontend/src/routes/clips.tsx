@@ -12,7 +12,6 @@ import {
 import { TopNav } from "@/components/TopNav";
 import { ClipThumb } from "@/components/ClipThumb";
 import {
-  mockClips,
   formatDuration,
   PLATFORMS,
   PLATFORM_VARIANTS,
@@ -58,11 +57,8 @@ function Clips() {
   const { projectId } = Route.useSearch();
   const [sort, setSort] = useState("score");
   const platforms = useSelectedPlatforms();
-  const [clips, setClips] = useState<Clip[]>(mockClips);
-  // Real clips only exist once Step 3 (analyze) ships — until then this is
-  // always true for any real project, and we fall back to example clips
-  // rather than showing an empty gallery.
-  const [isExampleData, setIsExampleData] = useState(true);
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [clipsLoaded, setClipsLoaded] = useState(false);
   const [project, setProject] = useState<ApiProject | null>(null);
 
   useEffect(() => {
@@ -70,17 +66,15 @@ function Clips() {
     getProject(projectId)
       .then(setProject)
       .catch(() => {
-        // Backend unreachable — header falls back to the example title below.
+        // Backend unreachable — header falls back to "Untitled project" below.
       });
     listProjectClips(projectId)
       .then((real) => {
-        if (real.length > 0) {
-          setClips(real.map(toDisplayClip));
-          setIsExampleData(false);
-        }
+        setClips(real.map(toDisplayClip));
+        setClipsLoaded(true);
       })
       .catch(() => {
-        // Backend unreachable — stay on example clips.
+        setClipsLoaded(true);
       });
   }, [projectId]);
 
@@ -96,16 +90,10 @@ function Clips() {
     <div className="min-h-screen bg-background">
       <TopNav />
       <main className="mx-auto max-w-6xl px-6 py-12">
-        {isExampleData && projectId ? (
-          <p className="mb-6 rounded-md border border-dashed border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
-            Showing example clips — clip generation (transcribe/analyze/cut) isn't built yet, so this
-            project has no real clips.
-          </p>
-        ) : null}
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              {project?.title ?? project?.sourceUrl ?? project?.originalFilename ?? "Founder podcast — ep. 112"}
+              {project?.title ?? project?.sourceUrl ?? project?.originalFilename ?? "Untitled project"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {clips.length} clips · 9:16 ·{" "}
@@ -126,6 +114,14 @@ function Clips() {
           </Select>
         </div>
 
+        {clipsLoaded && clips.length === 0 ? (
+          <Card className="mt-10 flex flex-col items-center justify-center gap-1 border-dashed py-12 shadow-none">
+            <p className="text-sm font-medium">No clips yet</p>
+            <p className="text-xs text-muted-foreground">
+              Still processing, or this project hasn't been analyzed yet.
+            </p>
+          </Card>
+        ) : (
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((clip, i) => (
             <ClipCard
@@ -139,6 +135,7 @@ function Clips() {
             />
           ))}
         </div>
+        )}
       </main>
     </div>
   );

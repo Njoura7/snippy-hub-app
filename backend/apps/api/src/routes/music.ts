@@ -17,6 +17,7 @@ interface MusicTrack {
   key: string;
   title: string;
   mood: string;
+  artist: string | null;
   filename: string;
   license: string;
 }
@@ -33,6 +34,7 @@ export async function musicRoutes(app: FastifyInstance) {
         key: t.key,
         title: t.title,
         mood: t.mood,
+        artist: t.artist,
         license: t.license,
         previewUrl: `${app.config.API_PUBLIC_URL}/music/${t.key}/preview.mp3`,
       })),

@@ -1,18 +1,29 @@
 import type { CropKeyframe } from "../steps/smartCrop.js";
+import { HEADER_EMOJI_LEFT, HEADER_EMOJI_SIZE, HEADER_EMOJI_TOP } from "./ass.js";
 import { runCommand } from "./processRunner.js";
 
 const VIDEO_WIDTH = 1080;
 const VIDEO_HEIGHT = 1920;
 // Background music mix level, relative to the (unmodified) speech track —
 // deliberately quiet: "minimal and not distracting", the dialogue must stay
-// dominant. No loudness normalization, so this is a rough heuristic, not a
-// precise dB target.
-const MUSIC_VOLUME = 0.12;
+// dominant. Applied when the caller doesn't specify a musicVolume. All
+// library tracks are pre-normalized to -16 LUFS (see assets/music/README or
+// the manifest-generation note) so this multiplier behaves consistently
+// across tracks instead of some being louder than others at the "same" 0.12.
+const DEFAULT_MUSIC_VOLUME = 0.12;
+// Hard ceiling even if a caller passes something higher — this is a
+// background layer, never allowed to compete with dialogue.
+const MAX_MUSIC_VOLUME = 0.5;
+// Voice (speech) volume floor/ceiling — the UI slider enforces this range
+// too, but it's re-clamped here since this is the last line of defense
+// before dialogue becomes unintelligible.
+const MIN_VOICE_VOLUME = 0.5;
+const MAX_VOICE_VOLUME = 1.5;
 const MUSIC_FADE_SECONDS = 1;
-// Emoji badge, top-left, fixed position — see clients/emojiLibrary.ts for
-// why this is a real PNG composited in rather than an ASS text glyph.
-const EMOJI_SIZE = 90;
-const EMOJI_MARGIN = 50;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
 
 /** Escapes a path for use inside an ffmpeg filtergraph argument (colons and
  * backslashes are filter-syntax-significant). Our temp paths are generated
@@ -47,6 +58,10 @@ export interface RenderVerticalClipInput {
   musicFilePath?: string;
   /** Local file path to a curated emoji PNG — see clients/emojiLibrary.ts. Omit for none. */
   emojiImagePath?: string;
+  /** 0-0.5, default DEFAULT_MUSIC_VOLUME when omitted. Ignored if musicFilePath is unset. */
+  musicVolume?: number;
+  /** 0.5-1.5, default 1 (unmodified) when omitted. */
+  voiceVolume?: number;
 }
 
 /**
@@ -89,26 +104,36 @@ export async function renderVerticalClip(input: RenderVerticalClipInput): Promis
   let videoOutLabel = "vbase";
 
   if (emojiInputIndex !== null) {
+    // x/y match ass.ts's HEADER_EMOJI_LEFT/TOP exactly — that's what keeps
+    // this badge sitting next to the (now left-aligned, indented) header
+    // text instead of on top of it.
     filterParts.push(
-      `[${emojiInputIndex}:v]scale=${EMOJI_SIZE}:${EMOJI_SIZE}[emoji]`,
-      `[vbase][emoji]overlay=x=${EMOJI_MARGIN}:y=${EMOJI_MARGIN}:enable='between(t,0,${duration})'[vout]`,
+      `[${emojiInputIndex}:v]scale=${HEADER_EMOJI_SIZE}:${HEADER_EMOJI_SIZE}[emoji]`,
+      `[vbase][emoji]overlay=x=${HEADER_EMOJI_LEFT}:y=${HEADER_EMOJI_TOP}:enable='between(t,0,${duration})'[vout]`,
     );
     videoOutLabel = "vout";
   }
+
+  const voiceVolume = clamp(input.voiceVolume ?? 1, MIN_VOICE_VOLUME, MAX_VOICE_VOLUME);
+  const musicVolumeLevel = clamp(input.musicVolume ?? DEFAULT_MUSIC_VOLUME, 0, MAX_MUSIC_VOLUME);
 
   let audioMapArg = "0:a";
   if (musicInputIndex !== null) {
     const fadeOutStart = Math.max(0, duration - MUSIC_FADE_SECONDS);
     filterParts.push(
-      `[${musicInputIndex}:a]atrim=0:${duration},volume=${MUSIC_VOLUME},afade=t=in:st=0:d=${MUSIC_FADE_SECONDS},afade=t=out:st=${fadeOutStart}:d=${MUSIC_FADE_SECONDS}[bg]`,
+      `[${musicInputIndex}:a]atrim=0:${duration},volume=${musicVolumeLevel},afade=t=in:st=0:d=${MUSIC_FADE_SECONDS},afade=t=out:st=${fadeOutStart}:d=${MUSIC_FADE_SECONDS}[bg]`,
+      `[0:a]volume=${voiceVolume}[voice]`,
       // normalize=0 is load-bearing: amix's default (true) auto-scales *all*
       // inputs down to prevent clipping, which quietly turns down the speech
       // track too — measured directly (mean_volume -16.5dB without music vs
       // -22.5dB with, i.e. dialogue got quieter, not just "plus a bit of
-      // music"). With normalize off, speech stays at its original level and
-      // the already-attenuated (volume=${MUSIC_VOLUME}) music just adds on top.
-      `[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`,
+      // music"). With normalize off, speech stays at voiceVolume and the
+      // already-attenuated (volume=${musicVolumeLevel}) music just adds on top.
+      `[voice][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`,
     );
+    audioMapArg = "[aout]";
+  } else if (voiceVolume !== 1) {
+    filterParts.push(`[0:a]volume=${voiceVolume}[aout]`);
     audioMapArg = "[aout]";
   }
 

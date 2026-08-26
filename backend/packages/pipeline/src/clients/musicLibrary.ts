@@ -10,6 +10,7 @@ export interface MusicTrack {
   key: string;
   title: string;
   mood: string;
+  artist: string | null;
   filename: string;
   license: string;
 }

@@ -1,6 +1,6 @@
-import { createJob, jobs, projects } from "@cutroom/db";
+import { clipRenders, clips, createJob, jobs, projects } from "@cutroom/db";
 import { PLATFORMS, type Platform } from "@cutroom/shared";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import path from "node:path";
 
@@ -8,6 +8,8 @@ interface CreateProjectBody {
   sourceUrl: string;
   sourceType: "youtube" | "twitch";
   targetPlatforms?: Platform[];
+  maxClips?: number;
+  topicFilter?: string | null;
 }
 
 export async function projectsRoutes(app: FastifyInstance) {
@@ -25,12 +27,14 @@ export async function projectsRoutes(app: FastifyInstance) {
               type: "array",
               items: { type: "string", enum: PLATFORMS },
             },
+            maxClips: { type: "integer", minimum: 1, maximum: 30 },
+            topicFilter: { type: ["string", "null"], maxLength: 500 },
           },
         },
       },
     },
     async (request, reply) => {
-      const { sourceUrl, sourceType, targetPlatforms } = request.body;
+      const { sourceUrl, sourceType, targetPlatforms, maxClips, topicFilter } = request.body;
 
       const [project] = await app.db
         .insert(projects)
@@ -38,6 +42,8 @@ export async function projectsRoutes(app: FastifyInstance) {
           sourceType,
           sourceUrl,
           targetPlatforms: targetPlatforms?.length ? targetPlatforms : ["tiktok"],
+          ...(maxClips !== undefined ? { maxClips } : {}),
+          topicFilter: topicFilter?.trim() || null,
           status: "ingesting",
         })
         .returning();
@@ -71,12 +77,19 @@ export async function projectsRoutes(app: FastifyInstance) {
       }
     }
 
+    const maxClipsRaw = data.fields.maxClips;
+    const maxClipsValue = maxClipsRaw && "value" in maxClipsRaw ? Number(maxClipsRaw.value) : undefined;
+    const topicFilterRaw = data.fields.topicFilter;
+    const topicFilterValue = topicFilterRaw && "value" in topicFilterRaw ? String(topicFilterRaw.value).trim() : "";
+
     const [project] = await app.db
       .insert(projects)
       .values({
         sourceType: "upload",
         originalFilename: data.filename,
         targetPlatforms,
+        ...(maxClipsValue && maxClipsValue > 0 ? { maxClips: Math.min(30, Math.round(maxClipsValue)) } : {}),
+        topicFilter: topicFilterValue || null,
         status: "ingesting",
       })
       .returning();
@@ -142,6 +155,31 @@ export async function projectsRoutes(app: FastifyInstance) {
       .update(projects)
       .set({ storageKey: null, updatedAt: new Date() })
       .where(eq(projects.id, project.id));
+
+    return reply.code(204).send();
+  });
+
+  // Full delete: removes the project row (cascades to transcripts, jobs,
+  // clips, and clip_renders at the DB level — all have onDelete: "cascade"
+  // back to projects/clips in schema.ts) and every file it owns in storage —
+  // the source video plus every rendered clip. Irreversible.
+  app.delete<{ Params: { id: string } }>("/projects/:id", async (request, reply) => {
+    const project = await app.db.query.projects.findFirst({ where: eq(projects.id, request.params.id) });
+    if (!project) return reply.code(404).send({ error: "project not found" });
+
+    const projectClips = await app.db.query.clips.findMany({ where: eq(clips.projectId, project.id) });
+    const clipIds = projectClips.map((c) => c.id);
+    const renders = clipIds.length
+      ? await app.db.query.clipRenders.findMany({ where: inArray(clipRenders.clipId, clipIds) })
+      : [];
+
+    const keysToDelete = [
+      ...(project.storageKey ? [project.storageKey] : []),
+      ...renders.flatMap((r) => (r.storageKey ? [r.storageKey] : [])),
+    ];
+    await Promise.all(keysToDelete.map((key) => app.storage.delete(key)));
+
+    await app.db.delete(projects).where(eq(projects.id, project.id));
 
     return reply.code(204).send();
   });

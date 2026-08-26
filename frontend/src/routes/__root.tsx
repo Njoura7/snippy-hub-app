@@ -92,6 +92,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      // Same 4 caption fonts bundled in the worker image (see
+      // backend/packages/pipeline/assets/fonts/) — loaded here purely so the
+      // editor's font picker and live preview show what the render will
+      // actually look like, not a generic system-font approximation.
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Poppins:wght@800&family=Ubuntu:wght@700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

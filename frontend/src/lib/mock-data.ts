@@ -24,75 +24,6 @@ export type Clip = {
   tone: string;
 };
 
-export const mockClips: Clip[] = [
-  {
-    id: "c1",
-    title: "The 4am rule",
-    hook: "Nobody tells you this about waking up at 4am",
-    duration: 41,
-    score: 94,
-    start: 322,
-    end: 363,
-    tone: "Story",
-  },
-  {
-    id: "c2",
-    title: "Hiring mistake",
-    hook: "I lost $180k hiring the wrong first employee",
-    duration: 58,
-    score: 88,
-    start: 910,
-    end: 968,
-    tone: "Lesson",
-  },
-  {
-    id: "c3",
-    title: "One-line pitch",
-    hook: "Your pitch should fit in a text message",
-    duration: 27,
-    score: 81,
-    start: 1442,
-    end: 1469,
-    tone: "Tactic",
-  },
-  {
-    id: "c4",
-    title: "Burnout signal",
-    hook: "Burnout doesn't start with exhaustion",
-    duration: 63,
-    score: 76,
-    start: 2011,
-    end: 2074,
-    tone: "Insight",
-  },
-  {
-    id: "c5",
-    title: "Pricing flip",
-    hook: "We doubled the price and sold more",
-    duration: 35,
-    score: 72,
-    start: 2680,
-    end: 2715,
-    tone: "Tactic",
-  },
-  {
-    id: "c6",
-    title: "Cold email teardown",
-    hook: "This cold email got a reply from a billionaire",
-    duration: 49,
-    score: 65,
-    start: 3120,
-    end: 3169,
-    tone: "Teardown",
-  },
-];
-
-export const mockProjects = [
-  { id: "p1", name: "Founder podcast — ep. 112", clips: 6, createdAt: "2h ago", platform: "TikTok" },
-  { id: "p2", name: "Twitch VOD — build stream", clips: 9, createdAt: "Yesterday", platform: "Reels" },
-  { id: "p3", name: "Keynote: scaling to 1M", clips: 4, createdAt: "3 days ago", platform: "Shorts" },
-];
-
 export function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.round(seconds % 60);
@@ -105,6 +36,26 @@ export const CAPTION_PRESETS: { value: CaptionPreset; label: string; hint: strin
   { value: "minimal", label: "Minimal", hint: "Light, unobtrusive" },
   { value: "karaoke", label: "Karaoke", hint: "Word-by-word highlight" },
 ];
+
+export type CaptionFont = "anton" | "bebas" | "poppins" | "ubuntu";
+
+// Same 4 fonts bundled in the worker image (backend/packages/pipeline/assets/fonts/)
+// and loaded here via Google Fonts in __root.tsx — fontFamily/fontWeight is
+// what actually makes the editor preview and dropdown look like the real
+// render, not a generic system-font stand-in. Only the weight requested in
+// __root.tsx's Google Fonts URL is loaded for each family, so fontWeight
+// must match that exactly (400 default for Anton/Bebas — they're display
+// faces with only one weight; 800/700 for Poppins/Ubuntu).
+export const CAPTION_FONTS: { value: CaptionFont; label: string; fontFamily: string; fontWeight: number }[] = [
+  { value: "anton", label: "Anton", fontFamily: "'Anton', sans-serif", fontWeight: 400 },
+  { value: "bebas", label: "Bebas Neue", fontFamily: "'Bebas Neue', sans-serif", fontWeight: 400 },
+  { value: "poppins", label: "Poppins ExtraBold", fontFamily: "'Poppins', sans-serif", fontWeight: 800 },
+  { value: "ubuntu", label: "Ubuntu", fontFamily: "'Ubuntu', sans-serif", fontWeight: 700 },
+];
+
+export const CAPTION_FONT_STYLE: Record<CaptionFont, { fontFamily: string; fontWeight: number }> = Object.fromEntries(
+  CAPTION_FONTS.map((f) => [f.value, { fontFamily: f.fontFamily, fontWeight: f.fontWeight }]),
+) as Record<CaptionFont, { fontFamily: string; fontWeight: number }>;
 
 export const SAFE_ZONES: Record<
   Platform,
@@ -121,9 +72,3 @@ export const PLATFORM_VARIANTS: Record<Platform, { position: "top" | "middle" | 
   reels: { position: "top", note: "Captions lifted clear of the caption bar" },
 };
 
-export const mockWaveform = Array.from({ length: 96 }, (_, i) =>
-  Math.round(24 + 62 * Math.abs(Math.sin(i * 0.7) * Math.cos(i * 0.19) + Math.sin(i * 0.31) * 0.4)),
-);
-
-export const mockTranscript =
-  "…and that's when I realised nobody tells you this about waking up at 4am — the first week is a lie, the second week is where it actually starts to compound…";

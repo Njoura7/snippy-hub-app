@@ -1,16 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TopNav } from "@/components/TopNav";
-import { PLATFORMS, mockProjects, type Platform } from "@/lib/mock-data";
+import { PLATFORMS, type Platform } from "@/lib/mock-data";
 import { useSelectedPlatforms, setSelectedPlatforms } from "@/lib/platform-store";
 import {
   createProjectFromUpload,
   createProjectFromUrl,
+  deleteProject,
   formatRelativeTime,
   guessSourceType,
   listProjects,
@@ -39,24 +43,44 @@ function Index() {
   const platforms = useSelectedPlatforms();
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [showProjects, setShowProjects] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [realProjects, setRealProjects] = useState<ApiProject[] | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [maxClips, setMaxClips] = useState("10");
+  const [topicFilter, setTopicFilter] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    // Best-effort — if the backend isn't reachable, we just fall back to the
-    // mock projects list below rather than surfacing an error on page load.
+  function refreshProjects() {
     listProjects()
       .then(setRealProjects)
       .catch(() => setRealProjects(null));
-  }, []);
+  }
+
+  useEffect(refreshProjects, []);
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this project? This removes its clips, renders, and source video — it can't be undone.")) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      await deleteProject(id);
+      setRealProjects((prev) => prev?.filter((p) => p.id !== id) ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete project.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const ready = url.trim().length > 0 || !!file;
 
   async function handleGenerate() {
     setError(null);
+    const parsedMaxClips = Number(maxClips);
+    const effectiveMaxClips = Number.isFinite(parsedMaxClips) && parsedMaxClips > 0 ? Math.round(parsedMaxClips) : undefined;
+    const effectiveTopicFilter = topicFilter.trim() || null;
 
     if (url.trim()) {
       const sourceType = guessSourceType(url.trim());
@@ -66,7 +90,13 @@ function Index() {
       }
       setSubmitting(true);
       try {
-        const project = await createProjectFromUrl({ sourceUrl: url.trim(), sourceType, targetPlatforms: platforms });
+        const project = await createProjectFromUrl({
+          sourceUrl: url.trim(),
+          sourceType,
+          targetPlatforms: platforms,
+          maxClips: effectiveMaxClips,
+          topicFilter: effectiveTopicFilter,
+        });
         navigate({ to: "/processing", search: { projectId: project.id } });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -78,7 +108,12 @@ function Index() {
     if (file) {
       setSubmitting(true);
       try {
-        const project = await createProjectFromUpload({ file, targetPlatforms: platforms });
+        const project = await createProjectFromUpload({
+          file,
+          targetPlatforms: platforms,
+          maxClips: effectiveMaxClips,
+          topicFilter: effectiveTopicFilter,
+        });
         navigate({ to: "/processing", search: { projectId: project.id } });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -200,61 +235,79 @@ function Index() {
             {platforms.length} platform{platforms.length === 1 ? "" : "s"} selected ·{" "}
             {platforms.length} variant{platforms.length === 1 ? "" : "s"} per clip
           </p>
+
+          <div className="grid gap-4 pt-2 sm:grid-cols-[140px_1fr]">
+            <div className="space-y-2">
+              <Label htmlFor="max-clips">Max clips</Label>
+              <Input
+                id="max-clips"
+                type="number"
+                min={1}
+                max={30}
+                value={maxClips}
+                onChange={(e) => setMaxClips(e.target.value)}
+                disabled={submitting}
+              />
+              <p className="text-[11px] text-muted-foreground">Top-scoring clips kept, per video.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="topic-filter">Focus / requirements (optional)</Label>
+              <Textarea
+                id="topic-filter"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value)}
+                placeholder='e.g. "Must show Anton and/or Lovable — don&apos;t clip parts that aren&apos;t about Lovable."'
+                className="min-h-[38px] resize-none"
+                disabled={submitting}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                A hard requirement, not just a preference — a moment that fails this gets rejected
+                even if it'd otherwise be a great clip.
+              </p>
+            </div>
+          </div>
         </div>
 
         <Separator className="my-14" />
 
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Recent projects</h2>
-          {!hasRealProjects && (
-            <button
-              className="text-xs text-muted-foreground underline"
-              onClick={() => setShowProjects((s) => !s)}
-            >
-              {showProjects ? "Preview empty state" : "Show example data"}
-            </button>
-          )}
-        </div>
+        <h2 className="text-sm font-medium">Recent projects</h2>
 
         {hasRealProjects ? (
           <div className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
             {realProjects!.map((p) => (
-              <button
+              <div
                 key={p.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate({ to: "/processing", search: { projectId: p.id } })}
-                className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-secondary"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") navigate({ to: "/processing", search: { projectId: p.id } });
+                }}
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary"
               >
-                <div>
-                  <p className="text-sm font-medium">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
                     {p.title ?? p.sourceUrl ?? p.originalFilename ?? "Untitled project"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {p.status} · {p.targetPlatforms.join(", ") || "tiktok"}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">{formatRelativeTime(p.createdAt)}</span>
-              </button>
-            ))}
-          </div>
-        ) : showProjects ? (
-          <div className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-            <p className="border-b border-border px-4 py-2 text-[11px] text-muted-foreground">
-              Example data — create a project above to replace this.
-            </p>
-            {mockProjects.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => navigate({ to: "/clips" })}
-                className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-secondary"
-              >
-                <div>
-                  <p className="text-sm font-medium">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.clips} clips · {p.platform}
-                  </p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{formatRelativeTime(p.createdAt)}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(p.id);
+                    }}
+                    disabled={deletingId === p.id}
+                    aria-label="Delete project"
+                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-                <span className="text-xs text-muted-foreground">{p.createdAt}</span>
-              </button>
+              </div>
             ))}
           </div>
         ) : (

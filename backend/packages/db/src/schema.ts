@@ -56,6 +56,15 @@ export const projects = pgTable("projects", {
     .default(sql`'{}'::text[]`),
   status: projectStatusEnum("status").notNull().default("pending"),
   errorMessage: text("error_message"),
+  // Caps how many candidate clips analyze keeps (top-scoring first) —
+  // per-chunk the model can return up to 4, so a long episode with many
+  // chunks can otherwise return 20+. See DEFAULT_MAX_CLIPS in analyze.ts.
+  maxClips: integer("max_clips").notNull().default(10),
+  // Optional hard requirement layered on top of scoring — e.g. "Must show
+  // Anton and/or Lovable — don't clip parts of the podcast that aren't
+  // about Lovable." Null = no filter, every moment is eligible on merit
+  // alone. See buildScoringSystemPrompt in scoringPrompt.ts.
+  topicFilter: text("topic_filter"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -107,8 +116,17 @@ export const clips = pgTable("clips", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => projects.id, { onDelete: "cascade" }),
+  // Current boundaries — what actually gets rendered. Adjustable within
+  // +/-TRIM_ADJUST_MS of analyzedStartMs/analyzedEndMs (see routes/clips.ts).
   startMs: integer("start_ms").notNull(),
   endMs: integer("end_ms").notNull(),
+  // Immutable snapshot of where analyze originally placed the clip — the
+  // fixed reference point the trim adjustment range is measured from, so
+  // repeated small trims can't let a clip drift arbitrarily far from what it
+  // was actually scored on. Null on rows from before this existed; callers
+  // fall back to startMs/endMs (nothing's been trimmed yet on those anyway).
+  analyzedStartMs: integer("analyzed_start_ms"),
+  analyzedEndMs: integer("analyzed_end_ms"),
   score: real("score").notNull(),
   hookText: text("hook_text").notNull(),
   // Open set from the LLM ('Story' / 'Lesson' / 'Tactic' / ...), not an enum.
@@ -125,6 +143,13 @@ export const clips = pgTable("clips", {
   // References a track in the curated library (packages/pipeline/assets/music/manifest.json)
   // or a user-supplied storage key. Null = no background music.
   backgroundMusicKey: text("background_music_key"),
+  // 0-0.5, default applied in ffmpegRender.ts when null. Kept low on purpose —
+  // this is a background layer, not a co-lead.
+  musicVolume: real("music_volume"),
+  // 0.5-1.5, default 1 (unmodified) when null. Floor of 0.5 enforced both in
+  // the UI slider and defensively in ffmpegRender.ts — dialogue must stay
+  // intelligible no matter what gets sent to the render.
+  voiceVolume: real("voice_volume"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

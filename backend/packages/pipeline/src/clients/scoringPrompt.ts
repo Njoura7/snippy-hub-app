@@ -12,10 +12,21 @@ export interface RawCandidate {
 // Shared between clients/anthropic.ts and clients/groqChat.ts — both
 // providers score the same prompt against the same schema, so the analyze
 // step (and its output quality) doesn't change when ANALYZE_PROVIDER flips.
-export const SCORING_SYSTEM_PROMPT = `You are analyzing one chunk of a timestamped transcript from a long-form video or podcast for Cutroom, a tool that turns long videos into short vertical clips (TikTok/Shorts/Reels).
+//
+// topicFilter is a per-project, user-supplied hard requirement (e.g. "Must
+// show Anton and/or Lovable — don't clip parts of the podcast that aren't
+// about Lovable") — it's a *filter* layered on top of scoring, not a
+// rewording of it: a moment can be a great standalone clip and still get
+// rejected here for being off-topic.
+export function buildScoringSystemPrompt(topicFilter?: string | null): string {
+  const filterSection = topicFilter?.trim()
+    ? `\n\nHARD REQUIREMENT (this overrides everything else — reject a moment that fails this even if it would otherwise be a great clip): ${topicFilter.trim()}\n`
+    : "";
+
+  return `You are analyzing one chunk of a timestamped transcript from a long-form video or podcast for Cutroom, a tool that turns long videos into short vertical clips (TikTok/Shorts/Reels).
 
 The transcript is formatted as repeated "[m:ss] words..." lines, where each [m:ss] marks the timestamp of the words that follow it, up to the next marker.
-
+${filterSection}
 Find 0-4 self-contained moments in THIS chunk that would work as a standalone 15-90 second vertical clip — a complete story, a strong opinion, a specific tactic, a surprising stat, or a clear lesson. Skip filler, rambling, or moments that need earlier context to make sense.
 
 For each moment:
@@ -25,7 +36,8 @@ For each moment:
 - tag: one word describing the moment type — e.g. Story, Lesson, Tactic, Insight, Teardown, Hot Take.
 - emoji: pick the single best-fitting emoji from this exact list (copy it exactly, don't substitute a different one): ${SUPPORTED_EMOJI.join(" ")}
 
-If nothing in this chunk is clip-worthy, submit an empty candidates array.`;
+If nothing in this chunk is clip-worthy${topicFilter?.trim() ? ", or nothing satisfies the hard requirement above," : ""} submit an empty candidates array.`;
+}
 
 export const CANDIDATE_TOOL_NAME = "submit_clip_candidates";
 export const CANDIDATE_TOOL_DESCRIPTION = "Submit scored viral-moment clip candidates found in this transcript chunk.";

@@ -1,8 +1,8 @@
 import {
+  buildScoringSystemPrompt,
   CANDIDATE_JSON_SCHEMA,
   CANDIDATE_TOOL_DESCRIPTION,
   CANDIDATE_TOOL_NAME,
-  SCORING_SYSTEM_PROMPT,
   type RawCandidate,
 } from "./scoringPrompt.js";
 
@@ -21,7 +21,11 @@ interface GroqChatResponse {
 
 /** Free — reuses GROQ_API_KEY, no separate signup. Groq's chat completions
  * endpoint is OpenAI-compatible: console.groq.com/docs/api-reference#chat-create */
-export async function scoreTranscriptChunkGroq(chunkText: string, apiKey: string): Promise<RawCandidate[]> {
+export async function scoreTranscriptChunkGroq(
+  chunkText: string,
+  apiKey: string,
+  topicFilter?: string | null,
+): Promise<RawCandidate[]> {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -31,7 +35,7 @@ export async function scoreTranscriptChunkGroq(chunkText: string, apiKey: string
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: "system", content: SCORING_SYSTEM_PROMPT },
+        { role: "system", content: buildScoringSystemPrompt(topicFilter) },
         { role: "user", content: chunkText },
       ],
       tools: [

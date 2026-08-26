@@ -15,20 +15,31 @@ export async function handleAnalyzeJob(db: Db, config: WorkerConfig, job: Job) {
 
   const words = transcript.words as { word: string; start: number; end: number }[];
   const apiKey = config.ANALYZE_PROVIDER === "anthropic" ? config.ANTHROPIC_API_KEY : config.GROQ_API_KEY;
-  const candidates = await analyzeTranscript(words, { provider: config.ANALYZE_PROVIDER, apiKey });
+  const candidates = await analyzeTranscript(words, {
+    provider: config.ANALYZE_PROVIDER,
+    apiKey,
+    maxClips: project.maxClips,
+    topicFilter: project.topicFilter,
+  });
 
   if (candidates.length > 0) {
     await db.insert(clips).values(
-      candidates.map((c) => ({
-        projectId: project.id,
-        startMs: Math.round(c.startSeconds * 1000),
-        endMs: Math.round(c.endSeconds * 1000),
-        score: c.score,
-        hookText: c.hook,
-        tag: c.tag,
-        emoji: c.emoji,
-        status: "candidate" as const,
-      })),
+      candidates.map((c) => {
+        const startMs = Math.round(c.startSeconds * 1000);
+        const endMs = Math.round(c.endSeconds * 1000);
+        return {
+          projectId: project.id,
+          startMs,
+          endMs,
+          analyzedStartMs: startMs,
+          analyzedEndMs: endMs,
+          score: c.score,
+          hookText: c.hook,
+          tag: c.tag,
+          emoji: c.emoji,
+          status: "candidate" as const,
+        };
+      }),
     );
   }
 

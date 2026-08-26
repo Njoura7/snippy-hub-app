@@ -1,17 +1,16 @@
 import { createReadStream } from "node:fs";
 import { clipRenders, clips, projects, transcripts, type Db, type Job } from "@cutroom/db";
-import { cutAndCaptionClip, type HeaderCaptionConfig, type ResolvedCaptionStyle } from "@cutroom/pipeline";
+import { cutAndCaptionClip, type CaptionFont, type HeaderCaptionConfig, type ResolvedCaptionStyle } from "@cutroom/pipeline";
 import type { StorageDriver } from "@cutroom/storage";
 import { and, eq } from "drizzle-orm";
 import type { WorkerConfig } from "../env.js";
 import { resolveStorageTarget } from "../storageTarget.js";
 
-type FontName = "sans" | "mono" | "serif";
 type ColorName = "white" | "yellow" | "accent";
 type Position = "top" | "middle" | "bottom";
 
 interface CaptionStyleOverrides {
-  font?: FontName;
+  font?: CaptionFont;
   color?: ColorName;
   position?: Position;
   size?: number;
@@ -19,16 +18,16 @@ interface CaptionStyleOverrides {
   headerEnabled?: boolean;
 }
 
-const FONTS: FontName[] = ["sans", "mono", "serif"];
+const FONTS: CaptionFont[] = ["anton", "bebas", "poppins", "ubuntu"];
 const COLOR_HEX: Record<ColorName, string> = { white: "#FFFFFF", yellow: "#FFDE00", accent: "#4F6FEA" };
 const POSITIONS: Position[] = ["top", "middle", "bottom"];
 
 // Mirrors the frontend's CAPTION_PRESETS defaults (clip.$clipId.tsx) — kept
 // in sync by hand, same as the enum types shared with @cutroom/shared.
-const PRESET_DEFAULTS: Record<string, { font: FontName; color: ColorName; size: number }> = {
-  bold: { font: "sans", color: "yellow", size: 36 },
-  minimal: { font: "sans", color: "white", size: 24 },
-  karaoke: { font: "mono", color: "accent", size: 30 },
+const PRESET_DEFAULTS: Record<string, { font: CaptionFont; color: ColorName; size: number }> = {
+  bold: { font: "anton", color: "yellow", size: 36 },
+  minimal: { font: "poppins", color: "white", size: 24 },
+  karaoke: { font: "bebas", color: "accent", size: 30 },
 };
 
 // Mirrors the frontend's PLATFORM_VARIANTS default position.
@@ -93,6 +92,8 @@ export async function handleCutCaptionJob(db: Db, storage: StorageDriver, config
     header,
     emoji: clip.emoji,
     backgroundMusicKey: clip.backgroundMusicKey,
+    musicVolume: clip.musicVolume,
+    voiceVolume: clip.voiceVolume,
   });
 
   try {

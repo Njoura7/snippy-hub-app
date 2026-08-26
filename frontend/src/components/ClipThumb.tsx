@@ -1,4 +1,4 @@
-import { SAFE_ZONES, type CaptionPreset, type Platform } from "@/lib/mock-data";
+import { CAPTION_FONT_STYLE, SAFE_ZONES, type CaptionFont, type CaptionPreset, type Platform } from "@/lib/mock-data";
 
 const SEEDS = [
   "oklch(0.86 0.03 258)",
@@ -29,6 +29,7 @@ export function ClipThumb({
   showSafeZones = false,
   preset = "minimal",
   color = "white",
+  font,
   position = "bottom",
   size,
   emphasized = [],
@@ -40,6 +41,7 @@ export function ClipThumb({
   showSafeZones?: boolean;
   preset?: CaptionPreset;
   color?: string;
+  font?: CaptionFont;
   position?: "top" | "middle" | "bottom";
   size?: number;
   emphasized?: number[];
@@ -73,7 +75,10 @@ export function ClipThumb({
             className={`line-clamp-3 rounded px-2 py-1 leading-snug ${PRESET_CLASS[preset]} ${
               COLOR_STYLE[color] ?? COLOR_STYLE['white']
             }`}
-            style={size ? { fontSize: `${Math.round(size * 0.42)}px` } : undefined}
+            style={{
+              ...(size ? { fontSize: `${Math.round(size * 0.42)}px` } : undefined),
+              ...(font ? CAPTION_FONT_STYLE[font] : undefined),
+            }}
           >
             {label.split(/\s+/).map((word, i) => (
               <span

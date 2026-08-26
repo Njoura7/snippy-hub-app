@@ -21,6 +21,10 @@ export interface CutCaptionInput {
   emoji?: string | null;
   /** Key into packages/pipeline/assets/music/manifest.json — see clients/musicLibrary.ts. */
   backgroundMusicKey?: string | null;
+  /** 0-0.5 — see ffmpegRender.ts DEFAULT_MUSIC_VOLUME/MAX_MUSIC_VOLUME for defaults/clamping. */
+  musicVolume?: number | null;
+  /** 0.5-1.5 — see ffmpegRender.ts MIN_VOICE_VOLUME/MAX_VOICE_VOLUME for defaults/clamping. */
+  voiceVolume?: number | null;
 }
 
 export interface CutCaptionResult {
@@ -56,11 +60,13 @@ export async function cutAndCaptionClip(input: CutCaptionInput): Promise<CutCapt
       .filter((w) => w.start >= startSeconds && w.start < endSeconds)
       .map((w) => ({ ...w, start: w.start - startSeconds, end: w.end - startSeconds }));
 
+    const emojiImagePath = input.header.enabled && input.emoji ? getEmojiImagePath(input.emoji) : null;
+    const header: HeaderCaptionConfig = { ...input.header, hasEmoji: !!emojiImagePath };
+
     const assPath = path.join(workDir, "captions.ass");
-    await writeFile(assPath, buildAssSubtitles(clipWords, input.style, input.header, clipDuration), "utf-8");
+    await writeFile(assPath, buildAssSubtitles(clipWords, input.style, header, clipDuration), "utf-8");
 
     const musicFilePath = input.backgroundMusicKey ? await getMusicFilePath(input.backgroundMusicKey) : null;
-    const emojiImagePath = input.header.enabled && input.emoji ? getEmojiImagePath(input.emoji) : null;
 
     const outputPath = path.join(workDir, "clip.mp4");
     await renderVerticalClip({
@@ -73,6 +79,8 @@ export async function cutAndCaptionClip(input: CutCaptionInput): Promise<CutCapt
       outputPath,
       musicFilePath: musicFilePath ?? undefined,
       emojiImagePath: emojiImagePath ?? undefined,
+      musicVolume: input.musicVolume ?? undefined,
+      voiceVolume: input.voiceVolume ?? undefined,
     });
 
     return {
